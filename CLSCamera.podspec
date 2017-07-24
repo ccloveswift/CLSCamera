@@ -20,27 +20,19 @@ Pod::Spec.new do |s|
   
   s.source       = { :git => "https://github.com/ccloveswift/CLSCamera.git", :tag => "#{s.version}" }
 
-  s.source_files  = "Classes", "Classes/**/*.{swift}"
-  # s.exclude_files = "Classes/Exclude"
-
-  # s.public_header_files = "Classes/**/*.h"
-
-
-  # s.resource  = "icon.png"
-  # s.resources = "Resources/*.png"
-
-  # s.preserve_paths = "FilesToSave", "MoreFilesToSave"
-
-  s.framework = "AVFoundation"
-  # s.framework  = "SomeFramework"
-  # s.frameworks = "SomeFramework", "AnotherFramework"
-
-  # s.library   = "iconv"
-  # s.libraries = "iconv", "xml2"
-
   s.requires_arc = true
 
-  # s.xcconfig = { "HEADER_SEARCH_PATHS" => "$(SDKROOT)/usr/include/libxml2" }
-  s.dependency "CLSCommon"
+  s.default_subspec     = 'Core'
 
+  s.subspec 'Core' do |ss|
+    ss.dependency       'CLSCommon/Core'
+    ss.frameworks          = "AVFoundation"
+    ss.source_files        = "Classes/Core/**/*.{swift}"
+  end
+
+  s.subspec 'UI' do |ss|
+    ss.dependency       'CLSCommon/UI'
+    ss.dependency       'CLSCamera/Core'
+    ss.source_files        = "Classes/UI/**/*.{swift}"
+  end
 end

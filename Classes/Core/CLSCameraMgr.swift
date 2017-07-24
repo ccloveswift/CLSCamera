@@ -1,6 +1,6 @@
 //
-//  CameraMgr.swift
-//  CameraC
+//  CLSCameraMgr.swift
+//  CLSCamera
 //
 //  Created by TT on 2017/5/13.
 //  Copyright © 2017年 TT. All rights reserved.
@@ -10,36 +10,37 @@ import UIKit
 import AVFoundation
 import CLSCommon
 
-class CameraMgr: NSObject {
+open class CLSCameraMgr: NSObject {
 
-    public static let instance = CameraMgr()
+    public static let instance = CLSCameraMgr()
     
     /// 中间设备
-    private var mSession: AVCaptureSession!
+    internal var mSession: AVCaptureSession!
     /// 前/后 摄像头输入设备
-    private var mVideoInput: AVCaptureDeviceInput?
+    internal var mVideoInput: AVCaptureDeviceInput?
  
     /// 声音输入设备
-    private var mAudioInput: AVCaptureDeviceInput?
+    internal var mAudioInput: AVCaptureDeviceInput?
     
-    /// 照片输出流
-    private var mStillImageOutput: AVCaptureStillImageOutput?
+    /// 照片拍照输出
+    internal var mStillImageOutput: AVCaptureStillImageOutput?
+    
+    /// 视频输出流
+    internal var mVideoDataOutput: AVCaptureVideoDataOutput?
     
     
-    private override init() {
+    internal override init() {
         
         super.init()
-        
         self.mSession = AVCaptureSession.init()
-
     }
     
-    func fStart() -> Void {
+    open func fStart() -> Void {
         
         self.mSession.startRunning()
     }
     
-    func fStop() -> Void {
+    open func fStop() -> Void {
         
         self.mSession.stopRunning()
     }
@@ -48,7 +49,7 @@ class CameraMgr: NSObject {
     /// 获取当前摄像头前后位置
     ///
     /// - Returns: 前后位置
-    func fGetDevicePostion() -> AVCaptureDevicePosition? {
+    open func fGetDevicePostion() -> AVCaptureDevicePosition? {
         
         return mVideoInput?.device.position
     }
@@ -56,7 +57,7 @@ class CameraMgr: NSObject {
     /// 切换拍照能力
     ///
     /// - Parameter position: 前后参数
-    func fSelectStillImageOutput(position: AVCaptureDevicePosition) -> Void {
+    open func fSelectStillImageOutput(position: AVCaptureDevicePosition) -> Void {
         
         let bRet = self.fInitVideoInput(position: position)
         guard bRet == true else {
@@ -64,10 +65,12 @@ class CameraMgr: NSObject {
             CLSLogError("错误")
             return
         }
+        let _ = self.fInitVideoDataOutput()
+        let _ = self.fInitStillImageOutput()
         let _ = self.fSelectSessionPreset(preset: AVCaptureSessionPresetPhoto)
     }
     
-    func fSelectSessionPreset(preset: String) -> Bool {
+    open func fSelectSessionPreset(preset: String) -> Bool {
         
         if (self.mSession.canSetSessionPreset(preset)) {
             
@@ -81,10 +84,12 @@ class CameraMgr: NSObject {
     /// 切换成视频能力
     ///
     /// - Parameter position: 前后参数
-    func fSelectVideo(position: AVCaptureDevicePosition) -> Void {
+    open func fSelectVideo(position: AVCaptureDevicePosition) -> Void {
         
         let _ = self.fInitVideoInput(position: position)
         let _ = self.fInitAudioInput()
+        let _ = self.fInitVideoDataOutput()
+        let _ = self.fInitStillImageOutput()
         let _ = self.fSelectSessionPreset(preset: AVCaptureSessionPresetHigh)
     }
     
@@ -93,7 +98,7 @@ class CameraMgr: NSObject {
     ///
     /// - Parameter frame:
     /// - Returns:
-    func fGetPreviewLayer(frame: CGRect) -> AVCaptureVideoPreviewLayer {
+    open func fGetPreviewLayer(frame: CGRect) -> AVCaptureVideoPreviewLayer {
         
         let layer = AVCaptureVideoPreviewLayer.init(session: self.mSession)!
         layer.videoGravity = AVLayerVideoGravityResizeAspect;
@@ -106,7 +111,7 @@ class CameraMgr: NSObject {
     ///
     /// - Parameter position:
     /// - Returns:
-    func fGetDevicePostions(position: AVCaptureDevicePosition) -> Bool {
+    open func fGetDevicePostions(position: AVCaptureDevicePosition) -> Bool {
         
         let devices = AVCaptureDevice.devices(withMediaType: AVMediaTypeVideo)
         
@@ -215,5 +220,51 @@ class CameraMgr: NSObject {
             self.mSession.removeInput(input)
             self.mAudioInput = nil
         }
+    }
+    
+    private func fInitVideoDataOutput() -> Bool {
+        
+        if self.mVideoDataOutput == nil {
+            
+            self.mVideoDataOutput = AVCaptureVideoDataOutput.init()
+            self.mVideoDataOutput?.alwaysDiscardsLateVideoFrames = true
+            self.mVideoDataOutput?.setSampleBufferDelegate(self, queue: DispatchQueue.main)
+            if (self.mSession.canAddOutput(self.mVideoDataOutput)) {
+                
+                self.mSession.addOutput(self.mVideoDataOutput)
+            }
+            else {
+                
+                return false
+            }
+        }
+        
+        return true
+    }
+    
+    private func fInitStillImageOutput() -> Bool {
+        
+        if self.mStillImageOutput == nil {
+            
+            self.mStillImageOutput = AVCaptureStillImageOutput.init()
+            self.mStillImageOutput?.outputSettings = [AVVideoCodecKey : AVVideoCodecJPEG]
+            if (self.mSession.canAddOutput(self.mStillImageOutput)) {
+                
+                self.mSession.addOutput(self.mStillImageOutput)
+            }
+            else {
+                
+                return false
+            }
+        }
+        
+        return true
+    }
+}
+
+extension CLSCameraMgr : AVCaptureVideoDataOutputSampleBufferDelegate {
+    
+    public func captureOutput(_ captureOutput: AVCaptureOutput!, didOutputSampleBuffer sampleBuffer: CMSampleBuffer!, from connection: AVCaptureConnection!) {
+        
     }
 }
