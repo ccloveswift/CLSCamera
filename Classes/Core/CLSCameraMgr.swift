@@ -28,6 +28,12 @@ open class CLSCameraMgr: NSObject {
     /// 视频输出流
     internal var mVideoDataOutput: AVCaptureVideoDataOutput?
     
+    ///
+//    let videoDataOutputQueue = dispatch_queue_create("VideoDataOutputQueue", DISPATCH_QUEUE_SERIAL)
+    
+    
+    /// buffer 回调接口
+    public var mPreviewBufferBlock: ((_ captureOutput: AVCaptureOutput, _ sampleBuffer: CMSampleBuffer, _ connection: AVCaptureConnection) -> Void)?
     
     internal override init() {
         
@@ -228,7 +234,10 @@ open class CLSCameraMgr: NSObject {
             
             self.mVideoDataOutput = AVCaptureVideoDataOutput.init()
             self.mVideoDataOutput?.alwaysDiscardsLateVideoFrames = true
-            self.mVideoDataOutput?.setSampleBufferDelegate(self, queue: DispatchQueue.main)
+            
+            self.mVideoDataOutput?.videoSettings = [kCVPixelBufferPixelFormatTypeKey as AnyHashable : kCVPixelFormatType_32BGRA]
+            
+            self.mVideoDataOutput?.setSampleBufferDelegate(self, queue: DispatchQueue.init(label: "com.v.data.output"))
             if (self.mSession.canAddOutput(self.mVideoDataOutput)) {
                 
                 self.mSession.addOutput(self.mVideoDataOutput)
@@ -260,11 +269,50 @@ open class CLSCameraMgr: NSObject {
         
         return true
     }
+    
+    public func fCapturePhoto(captureBlock: @escaping (_ jpegData: Data) -> Void) {
+        
+        if let output = mStillImageOutput {
+            
+            let connection = output.connection(withMediaType: AVMediaTypeVideo)
+            output.captureStillImageAsynchronously(from: connection, completionHandler: { (imageDataSampleBuffer: CMSampleBuffer?, error: Error?) in
+                
+                if error != nil {
+                
+                    CLSLogError("error = \(String(describing: error))")
+                    assert(false)
+                }
+                else {
+                    
+                    let imageData = AVCaptureStillImageOutput.jpegStillImageNSDataRepresentation(imageDataSampleBuffer!)
+                    //let metadata:NSDictionary = CMCopyDictionaryOfAttachments(nil, imageDataSampleBuffer, CMAttachmentMode(kCMAttachmentMode_ShouldPropagate))!
+                    captureBlock(imageData!)
+                }
+            })
+        }
+        else {
+            
+            assert(false)
+        }
+    }
+    
+    public func fInitNewSDK() {
+        
+        if let videoDataOutput = self.mVideoDataOutput {
+            
+            let videoConn = videoDataOutput.connection(withMediaType: AVMediaTypeVideo)
+            videoConn?.videoOrientation = .portrait
+        }
+    }
 }
 
 extension CLSCameraMgr : AVCaptureVideoDataOutputSampleBufferDelegate {
     
     public func captureOutput(_ captureOutput: AVCaptureOutput!, didOutputSampleBuffer sampleBuffer: CMSampleBuffer!, from connection: AVCaptureConnection!) {
         
+        if let block = mPreviewBufferBlock {
+            
+            block(captureOutput, sampleBuffer, connection)
+        }
     }
 }
