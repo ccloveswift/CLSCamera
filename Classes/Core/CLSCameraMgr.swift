@@ -233,9 +233,9 @@ open class CLSCameraMgr: NSObject {
         if self.mVideoDataOutput == nil {
             
             self.mVideoDataOutput = AVCaptureVideoDataOutput.init()
-            self.mVideoDataOutput?.alwaysDiscardsLateVideoFrames = true
             
-            self.mVideoDataOutput?.videoSettings = [kCVPixelBufferPixelFormatTypeKey as AnyHashable : kCVPixelFormatType_32BGRA]
+            self.mVideoDataOutput?.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String : kCVPixelFormatType_32BGRA]
+            self.mVideoDataOutput?.alwaysDiscardsLateVideoFrames = true
             
             self.mVideoDataOutput?.setSampleBufferDelegate(self, queue: DispatchQueue.init(label: "com.v.data.output"))
             if (self.mSession.canAddOutput(self.mVideoDataOutput)) {
