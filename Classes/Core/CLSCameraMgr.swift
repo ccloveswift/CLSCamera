@@ -15,7 +15,7 @@ open class CLSCameraMgr: NSObject {
     public static let instance = CLSCameraMgr()
     
     /// 中间设备
-    internal var mSession: AVCaptureSession!
+    internal var mSession: AVCaptureSession?
     /// 前/后 摄像头输入设备
     internal var mVideoInput: AVCaptureDeviceInput?
  
@@ -28,27 +28,26 @@ open class CLSCameraMgr: NSObject {
     /// 视频输出流
     internal var mVideoDataOutput: AVCaptureVideoDataOutput?
     
-    ///
-//    let videoDataOutputQueue = dispatch_queue_create("VideoDataOutputQueue", DISPATCH_QUEUE_SERIAL)
-    
-    
     /// buffer 回调接口
     public var mPreviewBufferBlock: ((_ captureOutput: AVCaptureOutput, _ sampleBuffer: CMSampleBuffer, _ connection: AVCaptureConnection) -> Void)?
+    
     
     internal override init() {
         
         super.init()
-        self.mSession = AVCaptureSession.init()
+        #if !(TARGET_IPHONE_SIMULATOR)
+            self.mSession = AVCaptureSession.init()
+        #endif
     }
     
     open func fStart() -> Void {
         
-        self.mSession.startRunning()
+        self.mSession?.startRunning()
     }
     
     open func fStop() -> Void {
         
-        self.mSession.stopRunning()
+        self.mSession?.stopRunning()
     }
     
     
@@ -78,10 +77,13 @@ open class CLSCameraMgr: NSObject {
     
     open func fSelectSessionPreset(preset: String) -> Bool {
         
-        if (self.mSession.canSetSessionPreset(preset)) {
+        if let session = self.mSession {
             
-            self.mSession.sessionPreset = preset;
-            return true;
+            if (session.canSetSessionPreset(preset)) {
+                
+                session.sessionPreset = preset;
+                return true;
+            }
         }
         
         return false;
@@ -164,9 +166,12 @@ open class CLSCameraMgr: NSObject {
             
             self.mVideoInput = try AVCaptureDeviceInput.init(device: videoDevice)
             
-            if (self.mSession.canAddInput(self.mVideoInput)) {
-                
-                self.mSession.addInput(self.mVideoInput)
+            if let session = self.mSession {
+            
+                if (session.canAddInput(self.mVideoInput)) {
+                    
+                    session.addInput(self.mVideoInput)
+                }
             }
         }
         catch {
@@ -182,7 +187,7 @@ open class CLSCameraMgr: NSObject {
         
         if let input = self.mVideoInput {
             
-            self.mSession.removeInput(input)
+            self.mSession?.removeInput(input)
             self.mVideoInput = nil
         }
     }
@@ -204,9 +209,12 @@ open class CLSCameraMgr: NSObject {
                 
                 self.mAudioInput = try AVCaptureDeviceInput.init(device: mAudioInput)
                 
-                if (self.mSession.canAddInput(self.mAudioInput)) {
-                    
-                    self.mSession.addInput(self.mAudioInput)
+                if let session = self.mSession {
+                
+                    if (session.canAddInput(self.mAudioInput)) {
+                        
+                        session.addInput(self.mAudioInput)
+                    }
                 }
             }
             catch {
@@ -223,7 +231,7 @@ open class CLSCameraMgr: NSObject {
         
         if let input = self.mAudioInput {
             
-            self.mSession.removeInput(input)
+            self.mSession?.removeInput(input)
             self.mAudioInput = nil
         }
     }
@@ -232,15 +240,17 @@ open class CLSCameraMgr: NSObject {
         
         if self.mVideoDataOutput == nil {
             
-            self.mVideoDataOutput = AVCaptureVideoDataOutput.init()
+            guard let session = self.mSession else { return false }
             
-            self.mVideoDataOutput?.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String : kCVPixelFormatType_32BGRA]
+            self.mVideoDataOutput = AVCaptureVideoDataOutput.init()
+            let fuckPixelFormat = Int(kCVPixelFormatType_32BGRA) // 为了支持iPhone5s
+            self.mVideoDataOutput?.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String : fuckPixelFormat]
             self.mVideoDataOutput?.alwaysDiscardsLateVideoFrames = true
             
             self.mVideoDataOutput?.setSampleBufferDelegate(self, queue: DispatchQueue.init(label: "com.v.data.output"))
-            if (self.mSession.canAddOutput(self.mVideoDataOutput)) {
+            if (session.canAddOutput(self.mVideoDataOutput)) {
                 
-                self.mSession.addOutput(self.mVideoDataOutput)
+                session.addOutput(self.mVideoDataOutput)
             }
             else {
                 
@@ -254,12 +264,14 @@ open class CLSCameraMgr: NSObject {
     private func fInitStillImageOutput() -> Bool {
         
         if self.mStillImageOutput == nil {
+        
+            guard let session = self.mSession else { return false }
             
             self.mStillImageOutput = AVCaptureStillImageOutput.init()
             self.mStillImageOutput?.outputSettings = [AVVideoCodecKey : AVVideoCodecJPEG]
-            if (self.mSession.canAddOutput(self.mStillImageOutput)) {
+            if (session.canAddOutput(self.mStillImageOutput)) {
                 
-                self.mSession.addOutput(self.mStillImageOutput)
+                session.addOutput(self.mStillImageOutput)
             }
             else {
                 
