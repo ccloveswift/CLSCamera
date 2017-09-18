@@ -35,7 +35,8 @@ open class CLSCameraMgr: NSObject {
     internal override init() {
         
         super.init()
-        #if !(TARGET_IPHONE_SIMULATOR)
+        #if (arch(x86_64) || arch(i386)) && os(iOS)
+        #else
             self.mSession = AVCaptureSession.init()
         #endif
     }
