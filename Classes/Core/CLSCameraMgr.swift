@@ -41,11 +41,14 @@ open class CLSCameraMgr: NSObject {
         #endif
     }
     
+    
+    /// 开始使用相机模块
     open func fStart() -> Void {
         
         self.mSession?.startRunning()
     }
     
+    /// 暂停相机模块
     open func fStop() -> Void {
         
         self.mSession?.stopRunning()
@@ -128,14 +131,73 @@ open class CLSCameraMgr: NSObject {
             
             if (device as! AVCaptureDevice).position == position {
                 
-                return true;
+                return true
             }
         }
         
-        return false;
+        return false
     }
     
+//    var mTorchMode: AVCaptureTorchMode = AVCaptureTorchMode.auto
+    var mFlashMode: AVCaptureFlashMode = AVCaptureFlashMode.auto
     
+    /// 设置闪光灯状态
+    ///
+    /// - Parameter torchMode: 闪光灯状态
+    /// - Returns: 成功=true
+    open func fSetupFlashMode(flashMode: AVCaptureFlashMode) {
+        
+        mFlashMode = flashMode
+    }
+    
+    private func fResetTorchMode() {
+    
+        #if (arch(x86_64) || arch(i386)) && os(iOS)
+            return
+        #endif
+        if let input = mVideoInput {
+            
+            if input.device.hasFlash {
+                
+                do {
+                    try input.device.lockForConfiguration()
+                    input.device.flashMode = mFlashMode
+                    input.device.unlockForConfiguration()
+                } catch {
+                    
+                }
+            }
+//            if input.device.hasTorch {
+//                
+//                do {
+//                    /*
+//                     off = 0
+//                     on = 1
+//                     auto = 2
+//                     */
+//                    CLSLogInfo("当前 device torch mode 状态  \(input.device.torchMode)")
+//                    try input.device.lockForConfiguration()
+//                    if (mTorchMode == .on) {
+//                        
+////                        try input.device.setTorchModeOnWithLevel(0.1)
+//                        input.device.torchMode = mTorchMode
+//                    }
+//                    else {
+//                        
+//                        input.device.torchMode = mTorchMode
+//                    }
+//                    
+//                    input.device.unlockForConfiguration()
+//              
+//                } catch {
+//                    
+//                    CLSLogError("Error: fSetupTorchMode \(mTorchMode)")
+//                }
+//                
+//                return
+//            }
+        }
+    }
     
     private func fInitVideoInput(position: AVCaptureDevicePosition) -> Bool {
         
@@ -287,6 +349,7 @@ open class CLSCameraMgr: NSObject {
         
         if let output = mStillImageOutput {
             
+            fResetTorchMode()
             let connection = output.connection(withMediaType: AVMediaTypeVideo)
             output.captureStillImageAsynchronously(from: connection, completionHandler: { (imageDataSampleBuffer: CMSampleBuffer?, error: Error?) in
                 
